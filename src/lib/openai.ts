@@ -16,3 +16,20 @@ export async function createEmbedding(text: string): Promise<number[]> {
   });
   return response.data[0].embedding;
 }
+
+/**
+ * Embeds many texts in a single API call. OpenAI allows up to 2048 inputs
+ * per request; callers should batch beyond that.
+ */
+export async function createEmbeddings(texts: string[]): Promise<number[][]> {
+  if (texts.length === 0) return [];
+  const response = await openai.embeddings.create({
+    model: EMBEDDING_MODEL,
+    input: texts,
+    dimensions: EMBEDDING_DIMENSIONS,
+  });
+  // Ensure output order matches input order
+  return response.data
+    .sort((a, b) => a.index - b.index)
+    .map((d) => d.embedding);
+}

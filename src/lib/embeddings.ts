@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { createEmbedding } from "@/lib/openai";
+import { createEmbedding, createEmbeddings } from "@/lib/openai";
 
-const CHUNK_SIZE = 800;
+const CHUNK_SIZE = 800; // words per chunk
 const CHUNK_OVERLAP = 100;
+const EMBED_BATCH = 96; // inputs per OpenAI embeddings request
 
 export function chunkText(text: string): string[] {
-  const words = text.split(/\s+/);
+  const words = text.split(/\s+/).filter(Boolean);
   const chunks: string[] = [];
   let i = 0;
 
@@ -18,22 +19,40 @@ export function chunkText(text: string): string[] {
   return chunks;
 }
 
-export async function embedDocument(documentId: string, text: string) {
+/**
+ * Chunks a document's text, embeds every chunk in batches, and stores the
+ * vectors. Replaces any existing chunks for the document.
+ */
+export async function embedDocument(documentId: string, text: string): Promise<number> {
   const chunks = chunkText(text);
+  if (chunks.length === 0) return 0;
 
   await prisma.documentChunk.deleteMany({ where: { documentId } });
 
-  for (let i = 0; i < chunks.length; i++) {
-    const embedding = await createEmbedding(chunks[i]);
-    const vectorLiteral = `[${embedding.join(",")}]`;
+  let globalIndex = 0;
+  for (let start = 0; start < chunks.length; start += EMBED_BATCH) {
+    const batch = chunks.slice(start, start + EMBED_BATCH);
+    const vectors = await createEmbeddings(batch);
 
-    await prisma.$executeRaw`
-      INSERT INTO "DocumentChunk" (id, "documentId", content, "chunkIndex", embedding, "tokenCount")
-      VALUES (gen_random_uuid()::text, ${documentId}, ${chunks[i]}, ${i}, ${vectorLiteral}::vector, ${chunks[i].split(" ").length})
-    `;
+    for (let j = 0; j < batch.length; j++) {
+      const vectorLiteral = `[${vectors[j].join(",")}]`;
+      const content = batch[j];
+      const tokenCount = content.split(/\s+/).length;
+      await prisma.$executeRaw`
+        INSERT INTO "DocumentChunk" (id, "documentId", content, "chunkIndex", embedding, "tokenCount")
+        VALUES (gen_random_uuid()::text, ${documentId}, ${content}, ${globalIndex}, ${vectorLiteral}::vector, ${tokenCount})
+      `;
+      globalIndex++;
+    }
   }
+
+  return globalIndex;
 }
 
+/**
+ * Retrieves the most semantically relevant chunks across a course's
+ * READY documents for a given query, using pgvector cosine distance.
+ */
 export async function retrieveRelevantChunks(
   courseId: string,
   query: string,
