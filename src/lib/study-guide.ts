@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { zodResponseFormat } from "openai/helpers/zod";
-import { openai, CHAT_MODEL } from "@/lib/openai";
+import { getOpenAI, CHAT_MODEL } from "@/lib/openai";
 import { buildCourseContext } from "@/lib/ai-context";
 import type { GeneratedStudyGuide, StudyGuideType } from "@/types";
 
@@ -55,7 +55,7 @@ Formatting rules:
 
   const userPrompt = `Course material:\n\n${context}\n\nGenerate the study guide now.`;
 
-  const completion = await openai.chat.completions.parse({
+  const completion = await getOpenAI().chat.completions.parse({
     model: CHAT_MODEL,
     messages: [
       { role: "system", content: systemPrompt },

@@ -2,7 +2,7 @@ import { z, ZodError } from "zod";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserId } from "@/lib/auth";
-import { openai, CHAT_MODEL } from "@/lib/openai";
+import { getOpenAI, CHAT_MODEL } from "@/lib/openai";
 import { retrieveRelevantChunks } from "@/lib/embeddings";
 
 type Params = { params: Promise<{ courseId: string }> };
@@ -69,7 +69,7 @@ ${contextBlock}`;
       }));
 
     // 4. Stream the completion, persisting the full reply on completion
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: CHAT_MODEL,
       stream: true,
       temperature: 0.5,

@@ -5,7 +5,12 @@ import { getUserId } from "@/lib/auth";
 
 type Params = { params: Promise<{ documentId: string }> };
 
-const utapi = new UTApi();
+// Construct lazily so the build (page-data collection) never needs the token.
+let _utapi: UTApi | null = null;
+function getUTApi(): UTApi {
+  if (!_utapi) _utapi = new UTApi();
+  return _utapi;
+}
 
 /**
  * Loads a document only if it belongs to a course owned by the user.
@@ -27,7 +32,7 @@ export async function DELETE(_req: Request, { params }: Params) {
 
     // Best-effort delete of the stored file; proceed even if it fails
     try {
-      await utapi.deleteFiles(doc.fileKey);
+      await getUTApi().deleteFiles(doc.fileKey);
     } catch (error) {
       console.error("[DOCUMENT_DELETE] file cleanup failed:", error);
     }
