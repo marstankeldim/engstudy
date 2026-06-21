@@ -1,5 +1,8 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
+// Next.js 16 renamed the `middleware` file convention to `proxy`.
+// Clerk's handler is exported as the default function, which the proxy
+// convention supports unchanged.
 const isPublicRoute = createRouteMatcher([
   "/",
   "/sign-in(.*)",
