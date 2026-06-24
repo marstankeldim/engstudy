@@ -8,7 +8,6 @@ const nextConfig: NextConfig = {
       { hostname: "utfs.io" },
     ],
   },
-  serverExternalPackages: ["pdf-parse"],
 };
 
 export default nextConfig;
